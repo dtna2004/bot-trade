@@ -195,9 +195,8 @@ class BotWorker(QThread):
             if not os.path.exists(config_path): raise FileNotFoundError(f"Không tìm thấy file config: {config_path}")
             with open(config_path, 'r') as f: config = json.load(f)
             
-            # Kiểm tra xem model có đúng là 2 lớp không
             if config.get('num_classes') != 2:
-                self.error_signal.emit(f"Lỗi: Model được cấu hình cho {config.get('num_classes')} lớp, nhưng bot yêu cầu model 2 lớp (Tăng/Giảm).")
+                self.error_signal.emit(f"Lỗi: Model được cấu hình cho {config.get('num_classes')} lớp. Vui lòng huấn luyện lại model với 2 lớp (Tăng/Giảm).")
                 return False
 
             self.model = TransformerModel(
@@ -241,31 +240,26 @@ class BotWorker(QThread):
         return torch.tensor(scaled_data, dtype=torch.float32).unsqueeze(0)
             
     def analyze_market(self, df):
-        # *** ĐÃ SỬA: Logic phân tích cho model 2 lớp ***
         input_tensor = self.preprocess_data(df)
         if input_tensor is None: 
-            return {'long': 0, 'short': 0, 'decision': 'NEUTRAL'}
+            return {'long': 0, 'short': 0, 'diff': 0, 'decision': 'NEUTRAL'}
             
         with torch.no_grad():
             probabilities = torch.softmax(self.model(input_tensor), dim=1)[0]
         
-        # Với model 2 lớp, output là: [Xác suất Giảm, Xác suất Tăng]
         prob_short = probabilities[0].item() * 100
         prob_long = probabilities[1].item() * 100
+        prob_diff = prob_long - prob_short
         
-        decision = 'NEUTRAL' # Mặc định là đứng ngoài
-        confidence_threshold = 65.0 # Ngưỡng 65%
+        decision = 'NEUTRAL'
+        signal_threshold = self.settings.get('signal_threshold', 10.0)
 
-        if prob_long > confidence_threshold:
+        if prob_diff > signal_threshold:
             decision = 'LONG'
-        elif prob_short > confidence_threshold:
+        elif prob_diff < -signal_threshold:
             decision = 'SHORT'
             
-        return {
-            'long': prob_long, 
-            'short': prob_short, 
-            'decision': decision
-        }
+        return {'long': prob_long, 'short': prob_short, 'diff': prob_diff, 'decision': decision}
 
     def process_close_requests(self):
         while self.close_requests:
@@ -456,10 +450,19 @@ class MainWindow(QMainWindow):
             if os.path.exists(self.settings_file):
                 with open(self.settings_file, 'r') as f: self.settings = json.load(f)
             else:
-                self.settings = {'test_mode': True, 'total_capital': 1000, 'capital': 10, 
-                                 'leverage': 50, 'risk_reward': 1.5, 'fee': 0.0005, 
-                                 'active_symbols': ['BTC/USDT']}
+                self.settings = {
+                    'test_mode': True, 'total_capital': 1000, 'capital': 10, 
+                    'leverage': 50, 'risk_reward': 1.5, 'fee': 0.0005, 
+                    'active_symbols': ['BTC/USDT'],
+                    'signal_threshold': 10.0
+                }
                 self.save_settings()
+            
+            # Đảm bảo 'signal_threshold' luôn tồn tại trong cài đặt
+            if 'signal_threshold' not in self.settings:
+                self.settings['signal_threshold'] = 10.0
+                self.save_settings()
+
             self.setWindowTitle(f"Trading Bot - {'PAPER MODE' if self.settings.get('test_mode', True) else 'LIVE MODE'}")
         except Exception as e: self.update_status({'text': f"Lỗi load cài đặt: {e}"})
 
@@ -556,16 +559,22 @@ class MainWindow(QMainWindow):
         
         if 'analysis' in data:
             symbol, price, analysis = data['symbol'], data['price'], data['analysis']
-            long_prob, short_prob = analysis['long'], analysis['short']
+            prob_diff, decision = analysis['diff'], analysis['decision']
             
-            # Làm nổi bật xác suất cao hơn
-            long_style = "font-weight:bold;" if long_prob > short_prob else ""
-            short_style = "font-weight:bold;" if short_prob > long_prob else ""
-
+            # Xác định màu sắc và nội dung quyết định
+            if decision == 'LONG':
+                decision_text = f"<font color='#2ecc71'><b>QUYẾT ĐỊNH: LONG</b></font>"
+            elif decision == 'SHORT':
+                decision_text = f"<font color='#e74c3c'><b>QUYẾT ĐỊNH: SHORT</b></font>"
+            else:
+                decision_text = f"<font color='#95a5a6'>QUYẾT ĐỊNH: ĐỨNG NGOÀI</font>"
+            
+            # Định dạng HTML để hiển thị đẹp hơn
             status_html = (
                 f"{timestamp} <b>{symbol}</b> @ ${price:,.2f} | "
-                f"<font style='{long_style}' color='#2ecc71'>Long: {long_prob:.2f}%</font> | "
-                f"<font style='{short_style}' color='#e74c3c'>Short: {short_prob:.2f}%</font>"
+                f"Chênh lệch (L-S): {prob_diff:+.2f}% "
+                f"(Yêu cầu: +/-{self.settings.get('signal_threshold', 10.0):.2f}%) "
+                f"-> {decision_text}"
             )
             self.status_text.append(status_html)
         
@@ -597,6 +606,7 @@ class CapitalDialog(QDialog):
         self.leverage_input = QSpinBox()
         self.reward_input = QDoubleSpinBox()
         self.fee_input = QDoubleSpinBox()
+        self.signal_threshold_input = QDoubleSpinBox()
 
         self.test_mode_cb.setChecked(self.settings.get('test_mode', True))
         self.total_capital_input.setRange(10, 1_000_000); self.total_capital_input.setValue(self.settings.get('total_capital', 1000)); self.total_capital_input.setSuffix(" USDT")
@@ -604,12 +614,14 @@ class CapitalDialog(QDialog):
         self.leverage_input.setRange(1, 125); self.leverage_input.setValue(self.settings.get('leverage', 50)); self.leverage_input.setSuffix("x")
         self.reward_input.setRange(0.1, 10); self.reward_input.setValue(self.settings.get('risk_reward', 1.5)); self.reward_input.setSingleStep(0.1)
         self.fee_input.setRange(0, 1); self.fee_input.setValue(self.settings.get('fee', 0.0005) * 100); self.fee_input.setSuffix("%")
+        self.signal_threshold_input.setRange(1, 40); self.signal_threshold_input.setValue(self.settings.get('signal_threshold', 10.0)); self.signal_threshold_input.setSuffix(" %")
 
         form_layout.addRow(self.test_mode_cb)
         form_layout.addRow("Tổng vốn Paper Trading:", self.total_capital_input)
         form_layout.addRow("Ký quỹ mỗi lệnh:", self.capital_input)
         form_layout.addRow("Đòn bẩy:", self.leverage_input)
         form_layout.addRow("Tỉ lệ R:R (1:X):", self.reward_input)
+        form_layout.addRow("Ngưỡng tín hiệu (% chênh lệch):", self.signal_threshold_input)
         form_layout.addRow("Phí giao dịch:", self.fee_input)
         layout.addLayout(form_layout)
 
@@ -644,7 +656,8 @@ class CapitalDialog(QDialog):
     def get_settings(self):
         return {'test_mode': self.test_mode_cb.isChecked(), 'total_capital': self.total_capital_input.value(),
                 'capital': self.capital_input.value(), 'leverage': self.leverage_input.value(),
-                'risk_reward': self.reward_input.value(), 'fee': self.fee_input.value() / 100}
+                'risk_reward': self.reward_input.value(), 'fee': self.fee_input.value() / 100,
+                'signal_threshold': self.signal_threshold_input.value()}
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
