@@ -1,0 +1,15 @@
+{
+    "test_mode": true,
+    "total_capital": 1000,
+    "capital": 10,
+    "leverage": 50,
+    "risk_reward": 1.5,
+    "fee": 0.0005,
+    "active_symbols": [
+        "BTC/USDT",
+        "ETH/USDT",
+        "BNB/USDT",
+        "SOL/USDT",
+        "XRP/USDT"
+    ]
+}

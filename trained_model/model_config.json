@@ -1,0 +1,19 @@
+{
+    "seq_length": 48,
+    "features_to_use": [
+        "close",
+        "volume",
+        "returns",
+        "rsi",
+        "upper_band",
+        "lower_band"
+    ],
+    "input_dim": 6,
+    "d_model": 64,
+    "nhead": 4,
+    "num_layers": 3,
+    "num_classes": 2,
+    "dropout": 0.2,
+    "model_description": "Transformer model for BTC/USDT price movement prediction.",
+    "trained_at": "2025-06-07 08:59:00"
+}

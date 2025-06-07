@@ -1,0 +1,14 @@
+2025-06-06 19:32:32,056 - INFO - Đang tạo scaler từ dữ liệu lịch sử...
+2025-06-06 19:32:32,495 - INFO - Tải mô hình Transformer thành công.
+2025-06-06 19:33:48,600 - ERROR - Lỗi kết nối Binance: binance {"code":-2014,"msg":"API-key format invalid."}
+2025-06-06 19:34:49,998 - INFO - Đang tạo scaler từ dữ liệu lịch sử...
+2025-06-06 19:34:50,352 - INFO - Tải mô hình Transformer thành công.
+2025-06-06 19:35:43,162 - ERROR - Lỗi kết nối Binance: binance {"code":-1022,"msg":"Signature for this request is not valid."}
+2025-06-06 19:38:53,735 - INFO - Đang tạo scaler từ dữ liệu lịch sử...
+2025-06-06 19:38:54,287 - INFO - Tải mô hình Transformer thành công.
+2025-06-06 19:38:56,628 - INFO - Kết nối tới Binance Futures thành công.
+2025-06-06 19:38:56,752 - INFO - Đã đặt đòn bẩy là 100x cho BTC/USDT
+2025-06-06 19:42:07,487 - INFO - Đang tạo scaler từ dữ liệu lịch sử...
+2025-06-06 19:42:07,925 - INFO - Tải mô hình Transformer thành công.
+2025-06-06 19:42:10,145 - INFO - Kết nối tới Binance Futures thành công.
+2025-06-06 19:42:10,305 - INFO - Đã đặt đòn bẩy là 100x cho BTC/USDT
