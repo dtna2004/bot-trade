@@ -1,4 +1,4 @@
-# .env
+# tạo 1 file .env với nội dung
 ###
 #
 Nhập
