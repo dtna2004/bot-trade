@@ -91,4 +91,12 @@ Nếu gặp lỗi kết nối mạng khi tải dữ liệu:
 
 ## Liên hệ hỗ trợ
 
-Email: support@tradingbot.com 
+Email: support@tradingbot.com
+
+## Tạo file .env
+
+Tạo một file `.env` với nội dung:
+```
+BINANCE_API_KEY=your_api_key_here
+BINANCE_API_SECRET=your_api_secret_here
+```
