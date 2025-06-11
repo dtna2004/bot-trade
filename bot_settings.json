@@ -1,16 +1,18 @@
 {
-    "test_mode": true,
+    "trading_mode": "PAPER",
     "total_capital": 1000.0,
-    "capital": 1.0,
-    "leverage": 100,
+    "capital": 25.0,
+    "leverage": 5,
     "risk_reward": 1.0,
     "fee": 0.0005,
     "active_symbols": [
-        "BTC/USDT",
-        "ETH/USDT",
-        "BNB/USDT",
-        "SOL/USDT",
-        "XRP/USDT"
+        "ETH/USDT"
     ],
-    "signal_threshold": 3.0
+    "signal_threshold": 5.0,
+    "risk_percent": 0.01,
+    "update_interval": 5,
+    "analysis_interval": 5,
+    "candle_limit": 100,
+    "test_mode": true,
+    "active_positions": []
 }
